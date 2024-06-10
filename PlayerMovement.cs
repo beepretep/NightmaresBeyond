@@ -219,8 +219,11 @@ public class PlayerMovement : MonoBehaviour
         collectedFragments += 1;
         LevelManager.collectedFragments = collectedFragments;
         FragmentText.GetComponent<TextMeshProUGUI>().SetText("Fragments: " + collectedFragments);
-        DialogueBox.SetActive(true);
-        Invoke(nameof(ShowDialogue), 1.2f);
+        if(collectedFragments == 1)
+        {
+            DialogueBox.SetActive(true);
+            Invoke(nameof(ShowDialogue), 1.2f);
+        }
         Destroy(other.gameObject);
     }
     void SecKeyItemCollection()
