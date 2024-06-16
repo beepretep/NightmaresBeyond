@@ -9,6 +9,7 @@ public class MobSpawner : MonoBehaviour
     public PlayerMovement playerMic;
     float MicLoudness,Timer = 20f, ResetTimer, randValue, randomValue;
     public static bool firstSpawned = false;
+    public float SpawningChance, MicSpawningChance;
     GameObject clone;
     int mobChance;
     bool spawnedOnce,Triggered = false, rollOnce;
@@ -16,10 +17,10 @@ public class MobSpawner : MonoBehaviour
     {
         mobSpawnPoint = this.gameObject;
         spawnedOnce = false;
+        ChanceChange();
     }
     public void Update()
     {
-
         MicLoudness = playerMic.loudness;
         mobChance = Random.Range(0, 2);
         if (Triggered)
@@ -33,18 +34,18 @@ public class MobSpawner : MonoBehaviour
             if (MicLoudness > 1.7)
             {
  
-                if (randValue < .45f && GameObject.FindGameObjectsWithTag("Mobs").Length == 0 && !spawnedOnce && rollOnce) // 45% of the time
+                if (randValue < SpawningChance && GameObject.FindGameObjectsWithTag("Mobs").Length == 0 && !spawnedOnce && rollOnce) // 45% of the time
                 {
                         clone = Instantiate(Mobs[mobChance], mobSpawnPoint.transform.position, Quaternion.identity);
                         MicLoudness = 0;
                         Invoke("Deletion", 15f);
                         Triggered = false;
                         spawnedOnce = true;
-                    firstSpawned = true;
+                        firstSpawned = true;
                 }
                 Debug.Log("Test");
             }
-            if (randomValue < .25f && GameObject.FindGameObjectsWithTag("Mobs").Length == 0 && !spawnedOnce&& rollOnce ) // 25% of the time
+            if (randomValue < MicSpawningChance && GameObject.FindGameObjectsWithTag("Mobs").Length == 0 && !spawnedOnce&& rollOnce ) // 25% of the time
             {
                     clone = Instantiate(Mobs[mobChance], mobSpawnPoint.transform.position, Quaternion.identity);
                     MicLoudness = 0;
@@ -63,6 +64,24 @@ public class MobSpawner : MonoBehaviour
         {
             spawnedOnce = false;
             Timer = ResetTimer;
+        }
+    }
+    void ChanceChange()
+    {
+        if(LevelManager.Difficulty == 1)
+        {
+            SpawningChance = .35f;
+            MicSpawningChance = .15f;
+        }
+        if (LevelManager.Difficulty == 2)
+        {
+            SpawningChance = .45f;
+            MicSpawningChance = .25f;
+        }
+        if (LevelManager.Difficulty == 3)
+        {
+            SpawningChance = .55f;
+            MicSpawningChance = .35f;
         }
     }
     public void OnTriggerEnter(Collider other)
