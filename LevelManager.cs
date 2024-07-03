@@ -10,15 +10,14 @@ public class LevelManager : MonoBehaviour
     public GameObject[] playerSpawnPoint;
     public static float collectedFragments, KeyItemsCollected;
     private float Timer = 2f, ResetTimer;
-    private GameObject DiaBox, DiaText, fadeIn, fadeOut, CutsceneDiaBox, CutSceneText, Options, RegularPlayer, StamBar, OptionsBut, StartBut, Diff;
+    public GameObject DiaBox, DiaText, fadeIn, fadeOut, CutsceneDiaBox, CutSceneText, Options, RegularPlayer, StamBar, OptionsBut, StartBut, Diff;
     Button B1, B2, B3;
     public GameObject CutsceneCam;
     public int DialogueNum, DiaNum, CutSceneDiaNum;
     public string[] Dialogues, BedroomDialogues, GameDialogues, CutSceneDialogues, CutSceneDiaOptions;
-    public static bool ChangeLevel, DialogueOnScreen, Cutscene = false, End;
-    public static int Level, Difficulty;
+    public static bool ChangeLevel, DialogueOnScreen, Cutscene = false, End = false;
+    public static int Level, Difficulty, LevelDiaNum;
     private bool once = false, CutsceneOnce = false, Monster = false, MonsterOnce = false, EndingOnce = false, Awake = false, fragOnce = false;
-
     private string currentDialogue = "";
     private int textIndex = 0; 
 
@@ -93,6 +92,7 @@ public class LevelManager : MonoBehaviour
         GameObject.Find("Game").SetActive(false);
         GameObject.Find("Start").SetActive(false);
         StamBar.SetActive(true);
+        OptionsBut.SetActive(false);
         Level += 1;
         SceneManager.LoadScene("SceneGame");
         ToggleFadeOut(true);
@@ -103,31 +103,40 @@ public class LevelManager : MonoBehaviour
         LevelChange();
         CutsceneTrigger();
         Ending();
-        AwakeState();
         Exit();
+        LevelDiaNum = DiaNum;
         if(!fragOnce && KeyItemsCollected == 1) // Display diaglogue when player first collects a key item
         {
             fragOnce = true;   
             DisplayDialogueBox();
         }
-        if (MobSpawner.firstSpawned && !Monster) // Display dialogue when player first encounters a monster
+        if(MobSpawner.firstSpawned && !Monster) // Display dialogue when player first encounters a monster
         {
             DiaNum = 4;
             Monster = true;
             DisplayDialogueBox();
         }
+        if(Input.GetKeyDown((KeyCode.O)))
+        {
+            CloseText();
+        }
     }
     private void Dialogue() // Display story dialogues based on a timer
     {
-        if (!once && Level >= 1 && Level < 4)
+        if(!once && Level >= 1 && Level < 4)
         {
             Timer -= Time.deltaTime;
-            if (Timer <= 0 && DiaNum < 4)
+            if(Timer <= 0 && DiaNum < 4)
             {
                 DisplayDialogueBox();
                 Timer = ResetTimer;
                 once = true;
             }
+        }
+        if(!once && Level == 4 && DiaNum == 0)
+        {
+            DisplayDialogueBox();
+            once = true;
         }
     }
     private void DisplayDialogueBox() // Allowing the dialogue box finish animating before the text begins to appear
@@ -137,7 +146,7 @@ public class LevelManager : MonoBehaviour
     }
     private void LevelChange() // Fades the player out before changing levels
     {
-        if (ChangeLevel)
+        if(ChangeLevel)
         {
             fadeIn.SetActive(true);
             fadeOut.SetActive(false);
@@ -146,19 +155,16 @@ public class LevelManager : MonoBehaviour
     }
     private void CutsceneTrigger() // Triggering the cutscene once requirements are met
     {
-        if (collectedFragments == 10 && !CutsceneOnce)
+        if(collectedFragments == 10 && CutsceneOnce == false)
         {
-            PrepareForCutscene();
+            CutsceneOnce = true;
+            CutsceneCam = GameObject.FindGameObjectWithTag("CutSceneCam");
             Invoke(nameof(CutScene), 1);
         }
     }
-    private void PrepareForCutscene() // Set the cutscene camera
-    {
-        CutsceneCam = GameObject.FindGameObjectWithTag("CutSceneCam");
-    }
     private void Ending() // Ends the game once requirements are met
     {
-        if (!EndingOnce && End)
+        if(!EndingOnce && End == true)
         {
             CutSceneDiaNum = 8;
             Invoke(nameof(ChangingText), 1.4f);
@@ -175,28 +181,20 @@ public class LevelManager : MonoBehaviour
         Cursor.visible = true;
         CutsceneDiaBox.SetActive(true);
     }
-    private void AwakeState() // Once player finished final level, they will be sent to the previous level, with the player object be set to a specific location
-    {
-        if (Level == 4 && Awake)
-        {
-            RegularPlayer = GameObject.Find("Player");
-            RegularPlayer.transform.position = new Vector3(-0.831f, 1.054f, 0.73f);
-            Awake = false;
-        }
-    }
     private void Exit() // Allows the player to close the game at anytime
     {
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if(Input.GetKeyDown(KeyCode.Escape))
         {
             Application.Quit();
         }
     }
     private void CutScene() // Triggers the cutscene
     {
-        CutsceneOnce = true;
+        RegularPlayer = GameObject.Find("Player");
         Cutscene = true;
         ToggleFadeOut(true);
         RegularPlayer.SetActive(false);
+        StamBar.SetActive(false);
         CutsceneCam.SetActive(true);
         CutsceneDiaBox.SetActive(true);
         Options.SetActive(true);
@@ -208,9 +206,9 @@ public class LevelManager : MonoBehaviour
     }
     private void ChangingLevel() // Changes the level 
     {
-        if (ChangeLevel && !DialogueOnScreen)
+        if(ChangeLevel && !DialogueOnScreen)
         {
-            switch (Level)
+            switch(Level)
             {
                 case 2:
                     SceneManager.LoadScene("Bedroom");
@@ -219,7 +217,8 @@ public class LevelManager : MonoBehaviour
                     SceneManager.LoadScene("MainGame");
                     break;
                 case 4:
-                    SceneManager.LoadScene("Bedroom");
+                    SceneManager.LoadScene("BedroomEnding");
+                    RegularPlayer = GameObject.Find("Player");
                     break;
             }
             ChangeLevel = false;
@@ -238,7 +237,7 @@ public class LevelManager : MonoBehaviour
         DiaText.SetActive(true);
         fadeIn.SetActive(false);
         ToggleFadeOut(true);
-        if (Level == 4)
+        if(Level == 4)
         {
             Application.Quit();
         }
@@ -249,7 +248,7 @@ public class LevelManager : MonoBehaviour
     }
     public void ChangingText() // Creates and changes the text based on levels and situations
     {
-        if (!Cutscene)
+        if(!Cutscene)
         {
             RegularDialogue();
         }
@@ -257,7 +256,7 @@ public class LevelManager : MonoBehaviour
         {
             CutsceneDialogue();
         }
-        if (Monster && !MonsterOnce)
+        if(Monster && !MonsterOnce)
         {
             DisplayDialogueBox();
         }
@@ -266,35 +265,39 @@ public class LevelManager : MonoBehaviour
     {
         DiaText.SetActive(true);
         DialogueOnScreen = true;
-        if(Monster && !MonsterOnce)
+        if(Monster && MonsterOnce == false)
         {
             DisplayDialogueLetterByLetter(GameDialogues[4]);
             MonsterOnce = true;
             Debug.Log("MobTest0");
         }
-        if (Level == 1 && DiaNum < 4)
+        if(Level == 1 && DiaNum < 4)
         {
             DisplayDialogueLetterByLetter(Dialogues[DialogueNum]);
             DiaNum += 1;
         }
-        else if (Level == 2 && DiaNum <4)
+        else if(Level == 2 && DiaNum <4)
         {
             DisplayDialogueLetterByLetter(BedroomDialogues[DialogueNum]);
             DiaNum += 1;
         }
-        else if (Level == 3 && DiaNum < 4)
+        else if(Level == 3 && DiaNum < 4)
         {
             DisplayDialogueLetterByLetter(GameDialogues[DialogueNum]);
             DiaNum += 1;
+        }
+        if(Level == 4)
+        {
+            DisplayDialogueLetterByLetter(BedroomDialogues[4]);
         }
         if(KeyItemsCollected == 1)
         {
             DisplayDialogueLetterByLetter(GameDialogues[5]);
         }
-        if (CutSceneDiaNum > 7)
+        if(CutSceneDiaNum > 7)
         {
             CutSceneText.SetActive(true);
-            CutSceneText.GetComponent<TextMeshProUGUI>().SetText(CutSceneDialogues[7]);
+            DisplayDialogueLetterByLetter(CutSceneDialogues[7]);
             End = true;
         }
         Invoke(nameof(CloseText), 4f);
@@ -307,23 +310,33 @@ public class LevelManager : MonoBehaviour
     }
     private void AddNextLetter() // For the dialogue text to appear letter by letter
     {
+        if(DiaText.activeSelf)
+        { 
         DiaText.GetComponent<TextMeshProUGUI>().SetText(currentDialogue.Substring(0, textIndex++));
-        if (textIndex > currentDialogue.Length)
+        }
+        if(CutSceneText.activeSelf)
+        {
+        CutSceneText.GetComponent<TextMeshProUGUI>().SetText(currentDialogue.Substring(0, textIndex++));
+        }
+        if(textIndex > currentDialogue.Length)
         {
             CancelInvoke(nameof(AddNextLetter));
         }
     }
     private void CutsceneDialogue() // Showing the cutscene dialogues
     {
-        if (DiaBox.activeSelf)
+        if(DiaBox.activeSelf)
         {
             DiaBox.SetActive(false);
         }
         fadeOut.SetActive(false);
         CutSceneText.SetActive(true);
         CutSceneText.GetComponent<TextMeshProUGUI>().SetText(CutSceneDialogues[CutSceneDiaNum]);
+        if(CutSceneDiaNum < 6)
+        {
         UpdateCutsceneOptions();
-        if (CutSceneDiaNum == 7)
+        }
+        if(CutSceneDiaNum == 6)
         {
             EndCutscene();
         }
@@ -332,7 +345,7 @@ public class LevelManager : MonoBehaviour
     {
         GameObject OptionText = GameObject.Find("OptionText");
         OptionText.GetComponent<TextMeshProUGUI>().SetText(CutSceneDiaOptions[CutSceneDiaNum]);
-        if (CutSceneDiaNum == 1)
+        if(CutSceneDiaNum == 1)
         {
             GameObject Option2 = GameObject.Find("Option2");
             Option2.SetActive(false);
@@ -346,8 +359,8 @@ public class LevelManager : MonoBehaviour
         CutSceneText.SetActive(false);
         CutsceneDiaBox.SetActive(false);
         Options.SetActive(false);
+        StamBar.SetActive(true);
         RegularPlayer.SetActive(true);
-        CutsceneOnce = true;
         Cutscene = false;
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -355,13 +368,13 @@ public class LevelManager : MonoBehaviour
     private void CloseText() // Closes the dialogue box and text
     {
         DialogueOnScreen = false;
-        if (Level == 1)
+        if(Level == 1)
         {
             DialogueNum += 1;
         }
-        else if (Level == 2 || Level == 3)
+        else if(Level == 2 || Level == 3)
         {
-            if (DialogueNum < 3)
+            if(DialogueNum < 3)
             {
                 DialogueNum += 1;
             }
@@ -370,11 +383,10 @@ public class LevelManager : MonoBehaviour
         DiaText.SetActive(false);
         DiaText.GetComponent<TextMeshProUGUI>().SetText("");
         once = false;
-        if (End)
+        if(End == true)
         {
             Level += 1;
             CutsceneDiaBox.SetActive(false);
-            ToggleFadeOut(false);
             ChangeLevel = true;
             Invoke(nameof(ChangingLevel), 0.2f);
         }
@@ -382,9 +394,5 @@ public class LevelManager : MonoBehaviour
     private void ToggleFadeOut(bool state)
     {
         fadeOut.SetActive(state);
-    }
-    public void DifficultyChange()
-    {
-
     }
 }

@@ -11,33 +11,34 @@ public class PlayerMovement : MonoBehaviour
     public float walkingSpeed, runningSpeed, lookingSpeed, LookingLimit, rotationX = 0, loudnessSens, threshold, stamina, loudness;
     Vector3 DirectionOfMovement = Vector3.zero;
     public static float MicLevel;
+    public float Ycoords;
     public static bool hitOnce = false, Alive = true;
     public float collectedFragments, KeyItemsCollected, HP = 3;
     int amountOfTimesHit;
-    bool canMove = true, isSprinting, rightDoor, wrongDoor, Moveable = true, gemstone1, gemstone2, finale = false, falseDoor = false;
+    bool canMove = true, isSprinting, rightDoor, wrongDoor, Moveable = true, gemstone1 = false, gemstone2 = false, finale = false, falseDoor = false;
     public string[] ItemDialogues;
     public GameObject[] L2Doors;
     public int sampleWindow = 64;
     private AudioClip micClip;
     public AudioClip WalkingSound;
-    private string currentDialogue = "";
-    private int textIndex = 0;
     private AudioSource audioSource; 
     private bool isPlayingMovementSound = false; 
-    GameObject DialogueBox, DialogueText, FragmentText, keyItemsText, TrueDoor;
+    public GameObject DialogueBox, DialogueText, FragmentText, keyItemsText, TrueDoor, Playerobj;
     Image Stambar;
     PostProcessVolume volume;
     Animator animator;
     Vignette vignette;
     CharacterController characterController;
-    public void Start()
+    public void Start() // Load and assign all the variables 
     {
         InitializeComponents();
-        SetupInitialSettings();
         MicrophoneToAudioClip();
- 
+        stamina = 10;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+        Playerobj = this.gameObject;
     }
-    void InitializeComponents()
+    void InitializeComponents() // Assigning the variables and setting them according to the current level the player is int
     {
         volume = GameObject.Find("Post").GetComponent<PostProcessVolume>();
         volume.profile.TryGetSettings<Vignette>(out vignette);
@@ -53,15 +54,24 @@ public class PlayerMovement : MonoBehaviour
             keyItemsText = GameObject.Find("KeyItemsText");
             keyItemsText.SetActive(false);
         }
-    }
-    void SetupInitialSettings()
-    {
-        stamina = 10;
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        if (LevelManager.Level == 1)
+        {
+            Ycoords = 0.55f;
+        }
+        if (LevelManager.Level == 2 || LevelManager.Level == 4)
+        {
+            Ycoords = 1;
+        }
+        if (LevelManager.Level == 3)
+        {
+            Ycoords = 1.12f;
+        }
     }
     public void Update()
     {
+        Vector3 currentPosition = Playerobj.transform.position;
+        Vector3 newPosition = new Vector3(currentPosition.x, Ycoords, currentPosition.z);
+        Playerobj.transform.position = newPosition;
         EnsureComponentsExist();
         if (Moveable && Alive)
         {
@@ -77,7 +87,7 @@ public class PlayerMovement : MonoBehaviour
             SecEndingSetup();
         }
     }
-    void EnsureComponentsExist()
+    void EnsureComponentsExist() // Locate and assign variables if they are not found and assigned
     {
         if (DialogueBox == null || DialogueText == null)
         {
@@ -89,8 +99,9 @@ public class PlayerMovement : MonoBehaviour
             Stambar = GameObject.Find("StamBar").GetComponent<Image>();
         }
     }
-    void SecMovement()
+    void SecMovement() // Adjusts the movement speed and Y axis of the player as well as stamina control
     {
+        
         Vector3 right = transform.TransformDirection(Vector3.right);
         Vector3 forward = transform.TransformDirection(Vector3.forward);
         bool canCurrentlySprint = Input.GetKey(KeyCode.LeftShift) && stamina > 0;
@@ -121,9 +132,7 @@ public class PlayerMovement : MonoBehaviour
             PlayerCamera.transform.localRotation = Quaternion.Euler(rotationX, 0, 0);
             transform.rotation *= Quaternion.Euler(0, Input.GetAxis("Mouse X") * lookingSpeed, 0);
         }
-
         characterController.Move(DirectionOfMovement * Time.deltaTime);
-
         if (DirectionOfMovement.magnitude > 0)
         {
             if (!isPlayingMovementSound)
@@ -141,19 +150,19 @@ public class PlayerMovement : MonoBehaviour
             isPlayingMovementSound = false;
         }
     }
-    void SecMicInput()
+    void SecMicInput() // Get the loudness from the player's primary mic
     {
         loudness = GetLoudFromMic() * loudnessSens;
         MicLevel = loudness < threshold ? loudness : 0;
     }
-    void SecDeath()
+    void SecDeath() // Enabling the death animation
     {
         animator.enabled = true;
         Moveable = false;
         animator.SetBool("Death", true);
         Invoke("Death", 2.5f);
     }
-    void SecEndingSetup()
+    void SecEndingSetup() // Deleting the excessive doors in Level 3
     {
         int randomNum = Random.Range(0, 5);
         TrueDoor = L2Doors[randomNum];
@@ -165,11 +174,11 @@ public class PlayerMovement : MonoBehaviour
         }
         finale = true;
     }
-    void Death()
+    void Death() // Closes application upon death
     {
         Application.Quit();
     }
-    public float GetLoudness(int clipPosition, AudioClip clip)
+    public float GetLoudness(int clipPosition, AudioClip clip) // Getting the loudness of the mic as a audio clip
     {
         int startPos = clipPosition - sampleWindow;
         if (startPos < 0)
@@ -185,35 +194,39 @@ public class PlayerMovement : MonoBehaviour
         }
         return loudness / sampleWindow;
     }
-    public float GetLoudFromMic()
+    public float GetLoudFromMic() // COnvert the loudness from the audio clip to float
     {
         return GetLoudness(Microphone.GetPosition(Microphone.devices[0]), micClip);
     }
-    public void MicrophoneToAudioClip()
+    public void MicrophoneToAudioClip() // Converting the voice input from mic to audio clips
     {
         string microphoneName = Microphone.devices[0];
         micClip = Microphone.Start(microphoneName, true, 20, AudioSettings.outputSampleRate);
     }
-    private void OnTriggerEnter(Collider other)
+    private void OnTriggerEnter(Collider other) //Trigger events when player comes in contact with key tags
     {
         if (other.CompareTag("Frags"))
         {
             SecFragmentCollection(other);
         }
-        else if (other.CompareTag("KeyItems"))
+        if (other.CompareTag("KeyItems"))
         {
+            gemstone1 = true;
             SecKeyItemCollection();
+            Destroy(other.gameObject);
         }
-        else if (other.CompareTag("KeyItems2"))
+        if (other.tag == "KeyItems2")
         {
+            gemstone2 = true;
             SecKeyItemCollection();
+            Destroy(other.gameObject);
         }
         else if (other.CompareTag("Props"))
         {
             ShowDialogue();
         }
     }
-    void SecFragmentCollection(Collider other)
+    void SecFragmentCollection(Collider other) //Handling the collision of key fragments; Destroy after in contact
     {
         FragmentText.SetActive(true);
         collectedFragments += 1;
@@ -226,21 +239,22 @@ public class PlayerMovement : MonoBehaviour
         }
         Destroy(other.gameObject);
     }
-    void SecKeyItemCollection()
+    void SecKeyItemCollection() //Handling the collision of key item; Destroy after in contact
     {
-        if (!gemstone1)
+        if(gemstone1 == true)
         {
-            gemstone1 = true;
             KeyItemsCollected += 1;
+            gemstone1 = false;
         }
-        else if(!gemstone2)
+        if(gemstone2 == true)
         {
-            gemstone2 = true;
+            Debug.Log("Keytiem2");
             KeyItemsCollected += 1;
+            gemstone2 = false;
         }
         UpdateKeyItemsText();
     }
-    private void OnControllerColliderHit(ControllerColliderHit hit)
+    private void OnControllerColliderHit(ControllerColliderHit hit) //Triggers when player comes in contact however the object remains
     {
         switch (hit.collider.tag)
         {
@@ -250,7 +264,7 @@ public class PlayerMovement : MonoBehaviour
                 Invoke(nameof(ShowDialogue), 1.2f);
                 break;
             case "RightDoor":
-                if (!LevelManager.DialogueOnScreen)
+                if (!LevelManager.DialogueOnScreen && LevelManager.LevelDiaNum < 4)
                 {
                     SecRightDoorCollision();
                 }
@@ -274,14 +288,14 @@ public class PlayerMovement : MonoBehaviour
                 break;
         }
     }
-    void SecRightDoorCollision()
+    void SecRightDoorCollision() // Sets variables and dialogue when invoked
     {
         DialogueBox.SetActive(true);
         Invoke(nameof(ShowDialogue), 1.2f);
         rightDoor = true;
         Moveable = false;
     }
-    void SecMobCollision()
+    void SecMobCollision() // Sets variables and dialogue when invoked
     {
         if (!hitOnce)
         {
@@ -291,13 +305,13 @@ public class PlayerMovement : MonoBehaviour
             vignette.intensity.value = amountOfTimesHit <= 1 ? 0.4f : 0.6f;
         }
     }
-    void SecTrueDoorCollision()
+    void SecTrueDoorCollision() // Sets variables and dialogue when invoked
     {
         keyItemsText.SetActive(false);
         FragmentText.SetActive(false);
         LevelManager.End = true;
     }
-    void AdvanceToNextLevel()
+    void AdvanceToNextLevel() // Sends a message to the Level manager script to change levels
     {
         if (!LevelManager.DialogueOnScreen && LevelManager.Level == 2)
         {
@@ -305,7 +319,7 @@ public class PlayerMovement : MonoBehaviour
             LevelManager.ChangeLevel = true;
         }
     }
-    void ShowDialogue()
+    void ShowDialogue() // If there is no dialogue on screen, trigger a dialogue 
     {
         if (!LevelManager.DialogueOnScreen)
         {
@@ -314,7 +328,7 @@ public class PlayerMovement : MonoBehaviour
             StartCoroutine(TypeDialogue(GetDialogueText()));
         }
     }
-    IEnumerator TypeDialogue(string dialogue)
+    IEnumerator TypeDialogue(string dialogue) // Letter by letter dialogue
     {
         DialogueText.GetComponent<TextMeshProUGUI>().text = "";
         foreach (char letter in dialogue.ToCharArray())
@@ -324,39 +338,41 @@ public class PlayerMovement : MonoBehaviour
         }
         Invoke(nameof(CloseDialogue), 3f);
     }
-    string GetDialogueText()
+    string GetDialogueText() // Setting the dialogue sentence
     {
-        if (wrongDoor == true)
+        if(wrongDoor == true)
         {
-           
             wrongDoor = false;
             return ItemDialogues[0];
         }
-        if (rightDoor)
+        if(rightDoor)
         {
             LevelManager.Level += 1;
             LevelManager.ChangeLevel = true;
             return ItemDialogues[1];
         }
-        if (collectedFragments == 1)
+        if(collectedFragments == 1)
         { 
             Debug.Log("Testing");
             return ItemDialogues[0];
         }
-        if (falseDoor)
+        if(falseDoor)
         {
             falseDoor = false;
             return ItemDialogues[1];
         }
         return string.Empty;
     }
-    void UpdateKeyItemsText()
+    void UpdateKeyItemsText() // Updating the counter for key items
     {
-        keyItemsText.SetActive(true);
+        if(keyItemsText.active == false)
+        {
+            keyItemsText.SetActive(true);
+        }
         LevelManager.KeyItemsCollected = KeyItemsCollected;
         keyItemsText.GetComponent<TextMeshProUGUI>().SetText("Key Items: " + KeyItemsCollected);
     }
-    void CloseDialogue()
+    void CloseDialogue() // Closes the dialogue
     {
         DialogueText.SetActive(false);
         DialogueBox.SetActive(false);
